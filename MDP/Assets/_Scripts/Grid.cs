@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static Assets._Scripts.Node;
 using TMPro;
@@ -8,26 +9,24 @@ namespace Assets._Scripts
 {
     public class Grid : MonoBehaviour
     {
-        #region Public Variables
-        public Vector2 _gridWorldSize;
-        public float _nodeRadius;
-
-        #endregion
-
         #region Private Variables
         [SerializeField] private GameObject _nodeObj;
         [SerializeField] private GameObject _nodeHolder;
+        [SerializeField] private Vector2 _gridWorldSize;
+        [SerializeField] private float _nodeRadius;
+
         private Node[,] _grid;
         private float _nodeDiameter;
-        private int _gridSizeX, _gridSizeY;
+        public int gridSizeX, gridSizeY;
 
-        private Vector2Int[] _neighborsOffset = new Vector2Int[]
+        public Node startNode;
+        private readonly Vector2Int[] _neighborsOffset = new Vector2Int[]
         {
-            // down - left - up - right
-            new Vector2Int(0, -1),
+            // right - left - up - down
+            new Vector2Int(1, 0),
             new Vector2Int(-1, 0),
             new Vector2Int(0, 1),
-            new Vector2Int(1, 0)
+            new Vector2Int(0, -1),
         };
         #endregion
 
@@ -35,22 +34,18 @@ namespace Assets._Scripts
         private void Awake()
         {
             _nodeDiameter = _nodeRadius * 2;
-            _gridSizeX = Mathf.RoundToInt(_gridWorldSize.x / _nodeDiameter);
-            _gridSizeY = Mathf.RoundToInt(_gridWorldSize.y / _nodeDiameter);
+            gridSizeX = Mathf.RoundToInt(_gridWorldSize.x / _nodeDiameter);
+            gridSizeY = Mathf.RoundToInt(_gridWorldSize.y / _nodeDiameter);
 
         }
-        public void GenerateGrid()
+        private void Start()
         {
-            for (var i = 0; i < _nodeHolder.transform.childCount; i++)
-            {
-                Destroy(_nodeHolder.transform.GetChild(i).gameObject);
-            }
-            _grid = new Node[_gridSizeX, _gridSizeY];
+            _grid = new Node[gridSizeX, gridSizeY];
 
             var worldBottomLeft = transform.position - Vector3.right * _gridWorldSize.x / 2 - Vector3.forward * _gridWorldSize.y / 2;
-            for (var x = 0; x < _gridSizeX; x++)
+            for (var x = 0; x < gridSizeX; x++)
             {
-                for (var y = 0; y < _gridSizeY; y++)
+                for (var y = 0; y < gridSizeY; y++)
                 {
                     var worldPoint = worldBottomLeft + Vector3.right * (x * _nodeDiameter + _nodeRadius) + Vector3.forward * (y * _nodeDiameter + _nodeRadius);
                     var (state, color, value) = DetermineNodeState(x, y);
@@ -58,6 +53,8 @@ namespace Assets._Scripts
                         worldPoint, x, y, state, value
                         );
                     newNode.NodeGameObject = InstantiateNodeGameObject(_nodeObj, worldPoint, _nodeHolder, color, value);
+                    if (newNode.CheckState(NodeStates.Diamond))
+                        startNode = newNode;
                 }
             }
         }
@@ -75,16 +72,11 @@ namespace Assets._Scripts
             nodeGameObject.transform.parent = holder.transform;
 
             var renderer = nodeGameObject.GetComponent<MeshRenderer>();
-            if (renderer != null)
-            {
-                renderer.material.color = color;
-            }
+            renderer.material.color = color;
 
             var textComponent = nodeGameObject.GetComponentInChildren<TMP_Text>();
-            if (textComponent != null)
-            {
-                textComponent.SetText(Math.Abs(value - (-2)) < 0.001 ? string.Empty : value.ToString());
-            }
+
+            textComponent.SetText(Math.Abs(value - (-2)) < 0.001f ? null : value.ToString());
 
             return nodeGameObject;
         }
@@ -93,42 +85,124 @@ namespace Assets._Scripts
         #endregion
 
         #region Public Methods
-        //public List<Node> GetNeighbors(Node node)
-        //{
-        //    var neighbors = new List<Node>(4);
-
-        //    foreach (var offset in _neighborsOffset)
-        //    {
-        //        var checkX = node.gridX + offset.x;
-        //        var checkY = node.gridY + offset.y;
-
-        //        if (checkX < 0 || checkX >= _gridSizeX || checkY < 0 || checkY >= _gridSizeY) continue;
-        //        var neighborInGrid = _grid[checkX, checkY];
-        //        var newNode = new Node(
-        //            neighborInGrid.walkable,
-        //            neighborInGrid.worldPosition,
-        //            checkX,
-        //            checkY,
-        //            neighborInGrid.nodeColor
-        //        );
-        //        newNode.nodeGameObject = neighborInGrid.nodeGameObject;
-        //        neighbors.Add(newNode);
-        //    }
-        //    return neighbors;
-
-        //}
-
-
-        public Node NodeFromWorldPoint(Vector3 worldPosition)
+        public List<Node> GetNeighbors(Node node)
         {
-            var percentX = (worldPosition.x + _gridWorldSize.x / 2) / _gridWorldSize.x;
-            var percentY = (worldPosition.z + _gridWorldSize.y / 2) / _gridWorldSize.y;
+            var neighbors = new List<Node>(4);
 
-            var x = Mathf.FloorToInt(Mathf.Clamp((_gridSizeX) * percentX, 0, _gridSizeX - 1));
-            var y = Mathf.FloorToInt(Mathf.Clamp((_gridSizeY) * percentY, 0, _gridSizeY - 1));
+            foreach (var offset in _neighborsOffset)
+            {
+                var checkX = node.GridX + offset.x;
+                var checkY = node.GridY + offset.y;
 
+                var outOfBoundary = checkX < 0 || checkX >= gridSizeX || checkY < 0 || checkY >= gridSizeY;
+
+                if(outOfBoundary) continue;
+
+                var neighbor = _grid[checkX, checkY];
+                var isEmptyState = neighbor.CheckState(NodeStates.Empty);
+
+                if (!isEmptyState) continue;
+
+                neighbors.Add(neighbor);
+            }
+            return neighbors;
+
+        }
+        public Node GetNode(int x, int y)
+        {
+            if (x < 0 || x >= gridSizeX || y < 0 || y >= gridSizeY) return null;
             return _grid[x, y];
         }
+        public void UpdateGrid()
+        {
+            for (var x = 0; x < gridSizeX; x++)
+            {
+                for (var y = 0; y < gridSizeY; y++)
+                {
+                    var node = _grid[x, y];
+
+                    if (node.CheckState(NodeStates.Wall)) continue;
+
+                    var textComponent = node.NodeGameObject.GetComponentInChildren<TMP_Text>();
+                    if (textComponent != null)
+                    {
+                        textComponent.SetText(node.NodeValue.ToString("F2"));
+                    }
+                }
+            }
+        }
+
+
+        public float UpdateValues(Node node, float discount, float reward, float noise)
+        {
+            var nodeValues = new List<float>();
+            
+            foreach (var offset in _neighborsOffset)
+            {
+                if (node.CheckState(NodeStates.Diamond))
+                {
+                    return 1f;
+                }
+                if (node.CheckState(NodeStates.Fire))
+                {
+                    return -1f;
+                }
+
+                var checkX = node.GridX + offset.x;
+                var checkY = node.GridY + offset.y;
+
+                if (checkX < 0 || checkX >= gridSizeX || checkY < 0 || checkY >= gridSizeY)
+                {
+                    continue;
+                }
+
+                //Debug.Log($"We are checking {checkY}, {checkY}");
+
+                var adjustedOffsets = new List<Vector2Int>(_neighborsOffset);
+
+                adjustedOffsets.Remove(new Vector2Int(-offset.x, -offset.y));
+
+                var primaryPercent = 1 - noise;
+                var secondaryPercent = noise / 2;
+
+                float sum = 0;
+                foreach (var neighborOffset in adjustedOffsets)
+                {
+
+                    var neighborX = node.GridX + neighborOffset.x;
+                    var neighborY = node.GridY + neighborOffset.y;
+
+                    //Debug.Log($"Now we are checking {neighborX}, {neighborY} of {checkY}, {checkY}");
+
+                    if (neighborX < 0 || neighborX >= gridSizeX || neighborY < 0 || neighborY >= gridSizeY)
+                    { 
+                        //Debug.Log($"out of boundary {node.Position}");
+                       sum+= CalculateV(secondaryPercent, reward, discount, node);
+                       continue;
+                    }
+
+                    var adjacentNeighbor = _grid[neighborX, neighborY];
+                    if (adjacentNeighbor.CheckState(NodeStates.Wall))
+                    {
+                        sum += CalculateV(secondaryPercent, reward, discount, node);
+                        continue;
+                    }
+
+                    var result = CalculateV(neighborOffset == offset ? primaryPercent : secondaryPercent, reward, discount, adjacentNeighbor);
+                    sum += result;
+                }
+                //Debug.Log(sum);
+                nodeValues.Add(sum);
+            }
+            return nodeValues.Max();
+        }
+
+        private float CalculateV(float noise, float reward, float discount, Node node)
+        {
+            //Debug.Log($"{percent} * ({reward} + ({discount} * {node.NodeValue}))");
+            return noise * (reward + (discount * node.NodeValue));
+        }
+
         #endregion
     }
 }

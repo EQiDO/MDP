@@ -24,5 +24,18 @@ namespace Assets._Scripts
             NodeValue = nodeValue;
         }
         #endregion
+
+        #region Public Methods
+
+        public bool CheckState(NodeStates state)
+        {
+            return NodeState == state;
+        }
+
+        public void SetValue(float value)
+        {
+            NodeValue = value;
+        }
+        #endregion
     }
 }
