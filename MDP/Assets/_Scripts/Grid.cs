@@ -28,7 +28,7 @@ namespace Assets._Scripts
         #endregion
 
         #region Properties
-        public (int x, int y) GridSize => (_gridSizeX, _gridSizeY);
+        public IEnumerable<Node> GetAllNodes => _grid.Cast<Node>();
 
         #endregion
 
@@ -98,7 +98,6 @@ namespace Assets._Scripts
         #endregion
 
         #region Public Methods
-        public IEnumerable<Node> GetAllNodes => _grid.Cast<Node>();
         public void UpdateGrid()
         {
             for (var x = 0; x < _gridSizeX; x++)
