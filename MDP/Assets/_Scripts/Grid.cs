@@ -98,11 +98,7 @@ namespace Assets._Scripts
         #endregion
 
         #region Public Methods
-        public Node GetNode(int x, int y)
-        {
-            if (x < 0 || x >= _gridSizeX || y < 0 || y >= _gridSizeY) return null;
-            return _grid[x, y];
-        }
+        public IEnumerable<Node> GetAllNodes => _grid.Cast<Node>();
         public void UpdateGrid()
         {
             for (var x = 0; x < _gridSizeX; x++)
@@ -131,13 +127,9 @@ namespace Assets._Scripts
 
             foreach (var offset in _neighborsOffset)
             {
-                if (node.CheckState(NodeStates.Diamond))
+                if (node.CheckState(NodeStates.Diamond) || node.CheckState(NodeStates.Fire))
                 {
-                    return (1f, Vector2Int.zero);
-                }
-                if (node.CheckState(NodeStates.Fire))
-                {
-                    return (-1f, Vector2Int.zero);
+                    return (node.CheckState(NodeStates.Diamond) ? 1f : -1f, Vector2Int.zero);
                 }
 
                 var adjustedOffsets = new List<Vector2Int>(_neighborsOffset);
@@ -153,7 +145,6 @@ namespace Assets._Scripts
 
                     var neighborX = node.GridX + neighborOffset.x;
                     var neighborY = node.GridY + neighborOffset.y;
-
 
                     if (neighborX < 0 || neighborX >= _gridSizeX || neighborY < 0 || neighborY >= _gridSizeY)
                     { 
@@ -171,6 +162,51 @@ namespace Assets._Scripts
                     var result = CalculateV(neighborOffset == offset ? primaryPercent : secondaryPercent, reward, discount, adjacentNeighbor);
                     sum += result;
                 }
+                nodeValues.Add((sum, offset));
+            }
+            var maxNodeValue = nodeValues.OrderByDescending(nv => nv.value).First();
+            return maxNodeValue;
+        }
+
+        public (float, Vector2Int) UpdatePolicy(Node node,Vector2Int policy ,float discount, float reward, float noise)
+        {
+            var nodeValues = new List<(float value, Vector2Int direction)>();
+
+            var adjustedOffsets = new List<Vector2Int>(_neighborsOffset);
+
+            adjustedOffsets.Remove(new Vector2Int(-policy.x, -policy.y));
+
+            var primaryPercent = 1 - noise;
+            var secondaryPercent = noise / 2;
+
+            float sum = 0;
+
+            foreach (var offset in adjustedOffsets)
+            {
+                if (node.CheckState(NodeStates.Diamond) || node.CheckState(NodeStates.Fire))
+                {
+                    return (node.CheckState(NodeStates.Diamond) ? 1f : -1f, Vector2Int.zero);
+                }
+
+                var neighborX = node.GridX + offset.x;
+                var neighborY = node.GridY + offset.y;
+
+                if (neighborX < 0 || neighborX >= _gridSizeX || neighborY < 0 || neighborY >= _gridSizeY)
+                {
+                    sum += CalculateV(secondaryPercent, reward, discount, node);
+                    continue;
+                }
+
+                var adjacentNeighbor = _grid[neighborX, neighborY];
+                if (adjacentNeighbor.CheckState(NodeStates.Wall))
+                {
+                    sum += CalculateV(secondaryPercent, reward, discount, node);
+                    continue;
+                }
+
+                var result = CalculateV(policy == offset ? primaryPercent : secondaryPercent, reward, discount, adjacentNeighbor);
+                sum += result;
+
                 nodeValues.Add((sum, offset));
             }
             var maxNodeValue = nodeValues.OrderByDescending(nv => nv.value).First();

@@ -21,7 +21,7 @@ namespace Assets._Scripts
         public Material NodeGameObjectMaterial => NodeGameObject.GetComponent<MeshRenderer>().material;
         public TMP_Text NodeGameObjectText => NodeGameObject.GetComponentInChildren<TMP_Text>();
         public float NodeValue { get; private set; }
-        public Vector2Int NodeDirection { get; private set; }
+        public Vector2Int NodeDirection { get; private set; } = Vector2Int.up;
         #endregion
 
         #endregion

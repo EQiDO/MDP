@@ -24,38 +24,29 @@ namespace Assets._Scripts
         [SerializeField] private Vector2 _gridWorldSize;
         [SerializeField] private float _nodeRadius;
         #endregion
-
         #endregion
 
         #region Private Methods
 
         private void Start()
         {
-            StartCoroutine(StartMdp());
+            StartCoroutine(PolicyIteration());
         }
-
-        private IEnumerator StartMdp()
+        #region Value Iteration
+        private IEnumerator ValueIteration()
         {
             var grid = new Grid(_nodeObj, _nodeHolder, _gridWorldSize, _nodeRadius);
-            var (gridSizeX, gridSizeY) = grid.GridSize;
-
             var k = 0;
-            while (true)
+
+            do
             {
                 var hasChange = false;
 
                 var updatedValues = new Dictionary<Node, (float value, Vector2Int direction)>();
-
-                for (var x = 0; x < gridSizeX; x++)
+                foreach (var node in grid.GetAllNodes)
                 {
-                    for (var y = 0; y < gridSizeY; y++)
-                    {
-                        var node = grid.GetNode(x, y);
-                        var (value, direction) = grid.UpdateValue(node, _discount, _reward, _noise);
-
-                        updatedValues.Add(node, (value, direction));
-                        //Debug.Log($"initialize {node.Position}, {value}");
-                    }
+                    var (value, direction) = grid.UpdateValue(node, _discount, _reward, _noise);
+                    updatedValues.Add(node, (value, direction));
                 }
 
                 foreach (var (node, (value, direction)) in updatedValues)
@@ -72,14 +63,77 @@ namespace Assets._Scripts
                 if (!hasChange)
                 {
                     Debug.Log($"Iteration finished, k = {k}");
-                    yield break;
+                    break;
                 }
                 k++;
+                yield return new WaitForSeconds(_delay);
+                grid.UpdateGrid();
+
+            } while (true);
+
+        }
+        #endregion
+
+        #region Policy Iteration
+        private IEnumerator PolicyIteration()
+        {
+            var grid = new Grid(_nodeObj, _nodeHolder, _gridWorldSize, _nodeRadius);
+            var k = 0;
+
+            while (true)
+            {
+                bool hasChange;
+                do
+                {
+                    hasChange = false;
+
+                    foreach (var node in grid.GetAllNodes)
+                    {
+                        var oldValue = node.NodeValue;
+                        var (newValue, _) = grid.UpdatePolicy(node, node.NodeDirection, _discount, _reward, _noise);
+
+                        if (Math.Abs(oldValue - newValue) >= Maxerror)
+                        {
+                            hasChange = true;
+                            node.SetValue(newValue);
+                            node.SetNodeGameObjectColor(Color.green);
+                        }
+                    }
+
+                    yield return new WaitForSeconds(_delay);
+                    grid.UpdateGrid();
+                } while (hasChange);
+                Debug.Log($"{k} iteration end.");
+                var policyStable = true;
+
+                foreach (var node in grid.GetAllNodes)
+                {
+                    var oldPolicy = node.NodeDirection;
+
+                    var (_, bestDirection) = grid.UpdateValue(node, _discount, _reward, _noise);
+
+                    node.SetDirection(bestDirection);
+
+                    if (oldPolicy != bestDirection)
+                    {
+                        policyStable = false;
+                    }
+                }
+
+                if (policyStable)
+                {
+                    Debug.Log($"Policy Iteration converged after {k} iterations.");
+                    yield break;
+                }
+
+                k++;
+
                 yield return new WaitForSeconds(_delay);
                 grid.UpdateGrid();
             }
         }
         #endregion
 
+        #endregion
     }
 }
