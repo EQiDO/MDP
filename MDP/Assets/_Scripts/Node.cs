@@ -12,7 +12,7 @@ namespace Assets._Scripts
         public Vector3 WorldPosition { get; }
         public int GridX { get; }
         public int GridY { get; }
-        public Vector2 Position => new(GridX, GridY);
+        public Vector2Int Position => new(GridX, GridY);
         #endregion
 
         #region Mutable
