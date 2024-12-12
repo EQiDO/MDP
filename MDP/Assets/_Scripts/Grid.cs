@@ -118,8 +118,25 @@ namespace Assets._Scripts
                 }
             }
         }
+        public List<Node> GetValidNeighbors(Node node)
+        {
+            var neighbors = new List<Node>();
+            foreach (var offset in _neighborsOffset)
+            {
+                var neighborX = node.GridX + offset.x;
+                var neighborY = node.GridY + offset.y;
 
-       
+                if (neighborX >= 0 && neighborX < _gridSizeX && neighborY >= 0 && neighborY < _gridSizeY)
+                {
+                    var neighbor = _grid[neighborX, neighborY];
+                    if (!neighbor.CheckState(NodeStates.Wall))
+                        neighbors.Add(neighbor);
+                }
+            }
+
+            return neighbors;
+        }
+
         public (float, Vector2Int) UpdateValue(Node node, float discount, float reward, float noise)
         {
             var nodeValues = new List<(float value, Vector2Int direction)>();
@@ -169,8 +186,6 @@ namespace Assets._Scripts
 
         public (float, Vector2Int) UpdatePolicy(Node node,Vector2Int policy ,float discount, float reward, float noise)
         {
-            var nodeValues = new List<(float value, Vector2Int direction)>();
-
             var adjustedOffsets = new List<Vector2Int>(_neighborsOffset);
 
             adjustedOffsets.Remove(new Vector2Int(-policy.x, -policy.y));
@@ -205,11 +220,10 @@ namespace Assets._Scripts
 
                 var result = CalculateV(policy == offset ? primaryPercent : secondaryPercent, reward, discount, adjacentNeighbor);
                 sum += result;
-
-                nodeValues.Add((sum, offset));
             }
-            var maxNodeValue = nodeValues.OrderByDescending(nv => nv.value).First();
-            return maxNodeValue;
+            //var maxNodeValue = nodeValues.OrderByDescending(nv => nv.value).First();
+            return (sum, policy);
+            //return maxNodeValue;
         }
 
         #endregion

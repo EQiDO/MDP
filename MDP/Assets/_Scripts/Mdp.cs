@@ -20,22 +20,23 @@ namespace Assets._Scripts
 
         #region Grid Attributes 
         [SerializeField] private GameObject _nodeObj;
-        [SerializeField] private GameObject _nodeHolder;
         [SerializeField] private Vector2 _gridWorldSize;
         [SerializeField] private float _nodeRadius;
         #endregion
         #endregion
 
         #region Private Methods
-
         private void Start()
         {
-            StartCoroutine(PolicyIteration());
+            StartCoroutine(ValueIteration());
+            //StartCoroutine(PolicyIteration());
+            TestRandomRobot(100);
         }
         #region Value Iteration
         private IEnumerator ValueIteration()
         {
-            var grid = new Grid(_nodeObj, _nodeHolder, _gridWorldSize, _nodeRadius);
+            var nodeHolder = new GameObject("Node Holder");
+            var grid = new Grid(_nodeObj, nodeHolder, _gridWorldSize, _nodeRadius);
             var k = 0;
 
             do
@@ -77,7 +78,8 @@ namespace Assets._Scripts
         #region Policy Iteration
         private IEnumerator PolicyIteration()
         {
-            var grid = new Grid(_nodeObj, _nodeHolder, _gridWorldSize, _nodeRadius);
+            var nodeHolder = new GameObject("Node Holder");
+            var grid = new Grid(_nodeObj, nodeHolder, _gridWorldSize, _nodeRadius);
             var k = 0;
 
             while (true)
@@ -132,6 +134,61 @@ namespace Assets._Scripts
                 grid.UpdateGrid();
             }
         }
+        #endregion
+
+        #region Test
+        private void TestRandomRobot(int numberOfSimulations)
+        {
+            var nodeHolder = new GameObject("Node Holder");
+            var averageRewards = new Dictionary<Node, float>();
+            var grid = new Grid(_nodeObj, nodeHolder, _gridWorldSize, _nodeRadius);
+            foreach (var startNode in grid.GetAllNodes)
+            {
+                if (startNode.CheckState(NodeStates.Wall) || startNode.CheckState(NodeStates.Diamond) || startNode.CheckState(NodeStates.Fire))
+                    continue;
+
+                var totalReward = 0f;
+                for (var i = 0; i < numberOfSimulations; i++)
+                {
+                    var reward = SimulateRandomRobot(startNode, grid);
+                    totalReward += reward;
+                }
+
+                var averageReward = totalReward / numberOfSimulations;
+                averageRewards[startNode] = averageReward;
+
+                Debug.Log($"Start Node ({startNode.GridX}, {startNode.GridY}): Average Reward = {averageReward}");
+            }
+            foreach (var (node, value) in averageRewards)
+            {
+                node.SetValue(value);
+                node.SetNodeGameObjectColor(Color.green);
+            }
+            grid.UpdateGrid();
+        }
+
+        private float SimulateRandomRobot(Node startNode, Grid grid)
+        {
+            var currentNode = startNode;
+            var totalReward = 0f;
+
+            while (!currentNode.CheckState(NodeStates.Diamond) && !currentNode.CheckState(NodeStates.Fire))
+            {
+                var neighbors = grid.GetValidNeighbors(currentNode);
+                var randomNeighbor = UnityEngine.Random.Range(0, neighbors.Count);
+                currentNode = neighbors[randomNeighbor];
+                (var value, _) = grid.UpdateValue(currentNode, _discount, _reward, _noise);
+                totalReward += value;
+                //if (currentNode.CheckState(NodeStates.Diamond))
+                //    totalReward += 1f;
+                //else if (currentNode.CheckState(NodeStates.Fire))
+                //    totalReward -= 1f;
+                //else
+                //    totalReward += _reward;
+            }
+            return totalReward;
+        }
+
         #endregion
 
         #endregion
