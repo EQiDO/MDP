@@ -4,6 +4,8 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using UnityEngine;
 using TMPro;
+using Random = UnityEngine.Random;
+
 namespace Assets._Scripts
 {
     public class Grid
@@ -17,6 +19,7 @@ namespace Assets._Scripts
         private Node[,] _grid;
         private float _nodeDiameter;
         private int _gridSizeX, _gridSizeY;
+        private bool _show;
 
         private readonly Vector2Int[] _neighborsOffset = {
             // up - right - down - left
@@ -31,28 +34,30 @@ namespace Assets._Scripts
         #region Properties
         public IEnumerable<Node> GetAllNodes => _grid.Cast<Node>();
         public Node GetNodeFromGrid(int gridX, int gridY) => _grid[gridX, gridY];
+        public bool Show => _show;
 
         #endregion
 
         #region Ctor
-        public Grid(GameObject nodeObj, GameObject nodeHolder, Vector2 gridWorldSize, float nodeRadius)
+        public Grid(GameObject nodeObj, GameObject nodeHolder, Vector2 gridWorldSize, float nodeRadius, bool show)
         {
             _nodeGameObject = nodeObj;
             _nodeHolder = nodeHolder;
             _gridWorldSize = gridWorldSize;
             _nodeRadius = nodeRadius;
 
-            InitializeGrid();
+            InitializeGrid(show);
         }
+
         #endregion
 
         #region Private Methods
-        private void InitializeGrid()
+        private void InitializeGrid(bool show)
         {
             _nodeDiameter = _nodeRadius * 2;
             _gridSizeX = Mathf.RoundToInt(_gridWorldSize.x / _nodeDiameter);
             _gridSizeY = Mathf.RoundToInt(_gridWorldSize.y / _nodeDiameter);
-
+            _show = show;
             _grid = new Node[_gridSizeX, _gridSizeY];
 
             var worldBottomLeft = new Vector3(-_gridWorldSize.x / 2, 0, -_gridWorldSize.y / 2);
@@ -62,29 +67,55 @@ namespace Assets._Scripts
                 for (var y = 0; y < _gridSizeY; y++)
                 {
                     var worldPoint = worldBottomLeft + Vector3.right * (x * _nodeDiameter + _nodeRadius) + Vector3.forward * (y * _nodeDiameter + _nodeRadius);
-                    var (state, color, value) = DetermineNodeState(x, y);
                     var node = _grid[x, y] = new Node(
-                        worldPoint, x, y, state, value
+                        worldPoint, x, y
                     );
-
-                    var nodeGameObject = InstantiateNodeGameObject(_nodeGameObject, worldPoint, _nodeHolder);
-
-                    node.SetNodeGameObject(nodeGameObject);
-                    node.SetNodeGameObjectColor(color);
-                    node.SetNodeGameObjectText(value);
-                    if (!node.CheckState(NodeStates.Empty))
-                        node.NodeDirectionTransform.gameObject.SetActive(false);
+                    if (show)
+                    {
+                        var nodeGameObject = InstantiateNodeGameObject(_nodeGameObject, worldPoint, _nodeHolder);
+                        node.SetNodeGameObject(nodeGameObject);
+                    }
+                    node.SetNodeData(NodeStates.Empty, Color.black, 0);
                 }
             }
+            AssignRandomStates();
         }
-        private (NodeStates, Color, float) DetermineNodeState(int x, int y)
+        
+        private void AssignRandomStates()
         {
-            if (x == 1 && y == 1) return (NodeStates.Wall, Color.gray, float.NaN);
-            if (x == 3 && y == 1) return (NodeStates.Fire, Color.red, -1);
-            if (x == 3 && y == 2) return (NodeStates.Diamond, Color.green, 1);
+            var assignedPositions = new HashSet<Vector2Int>();
 
-            return (NodeStates.Empty, Color.black, 0);
+            AssignState(assignedPositions, NodeStates.Diamond, Color.green * 0.5f, 1);
+            AssignState(assignedPositions, NodeStates.Fire, Color.red, -1);
+
+            var wallCount = (_gridSizeX * _gridSizeY) * 0.25f;
+            for (var i = 0; i < wallCount; i++)
+            {
+                AssignState(assignedPositions, NodeStates.Wall, Color.gray, float.NaN);
+
+            }
         }
+
+        private void AssignState(HashSet<Vector2Int> assignedPositions, NodeStates state, Color color, float value)
+        {
+            var nodePosition = GetUniqueRandomPosition(assignedPositions);
+            var node = _grid[nodePosition.x, nodePosition.y];
+            node.SetNodeData(state, color, value);
+            if(_show)
+                node.NodeDirectionTransform.gameObject.SetActive(false);
+        }
+        private Vector2Int GetUniqueRandomPosition(HashSet<Vector2Int> assignedPositions)
+        {
+            Vector2Int position;
+            do
+            {
+                position = new Vector2Int(Random.Range(0, _gridSizeX), Random.Range(0, _gridSizeY));
+            } while (assignedPositions.Contains(position));
+
+            assignedPositions.Add(position);
+            return position;
+        }
+
         private GameObject InstantiateNodeGameObject(GameObject nodeObject, Vector3 position, GameObject holder)
         {
             var nodeGameObject = UnityEngine.Object.Instantiate(nodeObject, position, Quaternion.identity);
@@ -98,10 +129,25 @@ namespace Assets._Scripts
             return noise * (reward + (discount * node.NodeValue));
         }
         #endregion
-
         #region Public Methods
+        public void ResetGrid()
+        {
+            foreach (var node in GetAllNodes)
+            {
+                if (!node.CheckState(NodeStates.Empty)) continue;
+                node.SetValue(0f);
+                node.SetNodeGameObjectText(0f);
+                node.SetDirection(Vector2Int.up);
+                node.SetNodeGameObjectColor(Color.black);
+                if(_show)
+                    node.NodeDirectionTransform.localPosition = new Vector3(0, 0.5f, 0.4f);
+            }
+        }
+
         public void UpdateGrid()
         {
+            if(!_show) return;
+
             for (var x = 0; x < _gridSizeX; x++)
             {
                 for (var y = 0; y < _gridSizeY; y++)

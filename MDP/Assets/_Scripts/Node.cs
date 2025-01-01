@@ -8,7 +8,6 @@ namespace Assets._Scripts
         #region Properties
 
         #region Immutable
-        public NodeStates NodeState { get; }
         public Vector3 WorldPosition { get; }
         public int GridX { get; }
         public int GridY { get; }
@@ -17,9 +16,10 @@ namespace Assets._Scripts
 
         #region Mutable
         public GameObject NodeGameObject { get; private set; }
-        public Transform NodeDirectionTransform => NodeGameObject.gameObject.transform.GetChild(1);
-        public Material NodeGameObjectMaterial => NodeGameObject.GetComponent<MeshRenderer>().material;
-        public TMP_Text NodeGameObjectText => NodeGameObject.GetComponentInChildren<TMP_Text>();
+        public NodeStates NodeState { get; private set; }
+        public Transform NodeDirectionTransform => NodeGameObject?.gameObject.transform.GetChild(1);
+        public Material NodeGameObjectMaterial => NodeGameObject?.GetComponent<MeshRenderer>().material;
+        public TMP_Text NodeGameObjectText => NodeGameObject?.GetComponentInChildren<TMP_Text>();
         public float NodeValue { get; private set; }
         public Vector2Int NodeDirection { get; private set; } = Vector2Int.up;
         #endregion
@@ -27,13 +27,11 @@ namespace Assets._Scripts
         #endregion
 
         #region Ctor
-        public Node(Vector3 worldPosition, int gridX, int gridY, NodeStates nodeState, float nodeValue)
+        public Node(Vector3 worldPosition, int gridX, int gridY)
         {
             WorldPosition = worldPosition;
             GridX = gridX;
             GridY = gridY;
-            NodeState = nodeState;
-            NodeValue = nodeValue;
         }
         #endregion
 
@@ -50,20 +48,34 @@ namespace Assets._Scripts
             NodeValue = value;
         }
 
+        public void SetNodeData(NodeStates state, Color color, float value)
+        {
+            SetNodeState(state);
+            SetValue(value);
+            SetNodeGameObjectText(value);
+            SetNodeGameObjectColor(color);
+        }
         public void SetDirection(Vector2Int direction)
         {
             NodeDirection = direction;
         }
 
+        public void SetNodeState(NodeStates state)
+        {
+            NodeState = state;
+        }
         public void SetNodeGameObjectColor(Color color)
         {
+            if (NodeGameObject == null) return;
             NodeGameObjectMaterial.color = color;
         }
 
         public void SetNodeGameObjectText(float value)
         {
-            NodeGameObjectText.SetText(float.IsNaN(value) ? null : value.ToString("F2"));
+            if (NodeGameObject == null) return;
+            NodeGameObjectText?.SetText(float.IsNaN(value) ? null : value.ToString("F2"));
         }
+
         #endregion
     }
 }

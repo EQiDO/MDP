@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using System.Diagnostics;
+using Debug = UnityEngine.Debug;
+using System.Threading.Tasks;
 
 namespace Assets._Scripts
 {
@@ -15,31 +18,39 @@ namespace Assets._Scripts
         [SerializeField] private float _reward = 0.0f;
         [SerializeField] private float _noise = 0.2f;
         [SerializeField] private float _delay = 0.5f;
-        private const double Maxerror = 1e-4;
+        private const double MaxError = 1e-4;
 
         #endregion
 
         #region Grid Attributes 
         [SerializeField] private GameObject _nodeObj;
-        [SerializeField] private Vector2 _gridWorldSize;
+        //[SerializeField] private Vector2 _gridWorldSize;
+        [SerializeField] private float _gridSizeX = 5;
+        [SerializeField] private float _gridSizeY = 20;
         [SerializeField] private float _nodeRadius;
+
         #endregion
+
         #endregion
 
         #region Private Methods
+
         private void Start()
         {
-            //StartCoroutine(ValueIteration());
-            StartCoroutine(PolicyIteration());
+            TestRandomIterations(10, false, 0);
+            //TestRandomIterations(1, true, _delay);
+
+            //TestRandomIterations(5, false, 0);
+
+            //StartPolicyIteration();
+            //StartValueIteration();
         }
         #region Value Iteration
-        private IEnumerator ValueIteration()
+        private IEnumerator ValueIteration(Grid grid, bool show, float delay)
         {
-            var nodeHolder = new GameObject("Node Holder");
-            var grid = new Grid(_nodeObj, nodeHolder, _gridWorldSize, _nodeRadius);
             var k = 0;
 
-            do
+            while (true)
             {
                 var hasChange = false;
 
@@ -52,40 +63,40 @@ namespace Assets._Scripts
 
                 foreach (var (node, (value, direction)) in updatedValues)
                 {
-                    if (Math.Abs(node.NodeValue - value) >= Maxerror)
+                    if (Math.Abs(node.NodeValue - value) >= MaxError)
                     {
                         hasChange = true;
                         node.SetValue(value);
-                        node.SetNodeGameObjectColor(Color.green);
+                        if(show)
+                            node.SetNodeGameObjectColor(Color.green);
                     }
                     node.SetDirection(direction);
                 }
 
                 if (!hasChange)
                 {
-                    Debug.Log($"Iteration finished, k = {k}");
+                    //Debug.Log($"Iteration finished, k = {k}");
+                    grid.UpdateGrid();
+                    //TestRandomRobot(100, grid);
                     break;
                 }
-                k++;
-                yield return new WaitForSeconds(_delay);
-                grid.UpdateGrid();
 
-            } while (true);
-            TestRandomRobot(100, grid);
+                k++;
+                yield return new WaitForSeconds(delay);
+            }
+
         }
         #endregion
 
         #region Policy Iteration
-        private IEnumerator PolicyIteration()
+        private IEnumerator PolicyIteration(Grid grid,bool show, float delay)
         {
-            var nodeHolder = new GameObject("Node Holder");
-            var grid = new Grid(_nodeObj, nodeHolder, _gridWorldSize, _nodeRadius);
             var k = 0;
 
             while (true)
             {
-                bool hasChange;
-                do
+                var hasChange = true;
+                while (hasChange)
                 {
                     hasChange = false;
 
@@ -94,17 +105,16 @@ namespace Assets._Scripts
                         var oldValue = node.NodeValue;
                         var newValue = grid.UpdatePolicy(node, node.NodeDirection, _discount, _reward, _noise);
 
-                        if (Math.Abs(oldValue - newValue) >= Maxerror)
+                        if (Math.Abs(oldValue - newValue) >= MaxError)
                         {
                             hasChange = true;
                             node.SetValue(newValue);
-                            node.SetNodeGameObjectColor(Color.green);
+                            if(show)
+                                node.SetNodeGameObjectColor(Color.green);
                         }
                     }
+                }
 
-                    yield return new WaitForSeconds(_delay);
-                    grid.UpdateGrid();
-                } while (hasChange);
 
                 var policyStable = true;
 
@@ -124,19 +134,20 @@ namespace Assets._Scripts
 
                 if (policyStable)
                 {
-                    Debug.Log($"Policy Iteration converged after {k} iterations.");
+                    //Debug.Log($"Policy Iteration converged after {k} iterations.");
+                    grid.UpdateGrid();
                     yield break;
                 }
 
                 k++;
 
-                yield return new WaitForSeconds(_delay);
-                grid.UpdateGrid();
+                yield return new WaitForSeconds(delay);
+
             }
         }
         #endregion
 
-        #region Test
+        #region Robot
         private void TestRandomRobot(int numberOfSimulations, Grid valueGrid)
         {
             foreach (var node in valueGrid.GetAllNodes)
@@ -157,6 +168,20 @@ namespace Assets._Scripts
             }
         }
 
+        private void StartValueIteration()
+        {
+            var gridSize = new Vector2(_gridSizeX, _gridSizeY);
+            var nodeHolder = new GameObject("Node Holder");
+            var grid = new Grid(_nodeObj, nodeHolder, gridSize, _nodeRadius, true);
+            StartCoroutine(ValueIteration(grid, true, _delay));
+        }
+        private void StartPolicyIteration()
+        {
+            var gridSize = new Vector2(_gridSizeX, _gridSizeY);
+            var nodeHolder = new GameObject("Node Holder");
+            var grid = new Grid(_nodeObj, nodeHolder, gridSize, _nodeRadius, true);
+            StartCoroutine(PolicyIteration(grid, true, _delay));
+        }
         private float SimulateRandomRobot(Node startNode, Grid valueGrid)
         {
             var currentNode = startNode;
@@ -198,6 +223,56 @@ namespace Assets._Scripts
 
         #endregion
 
+        #region Test
+
+        private async void TestRandomIterations(int iterations, bool show, float delay)
+        {
+
+            double valueIterationTime = 0;
+            double policyIterationTime = 0;
+
+            for (var i = 0; i < iterations; i++)
+            {
+
+                var gridSize = new Vector2(_gridSizeX, _gridSizeY);
+                //var nodeHolder = new GameObject("Node Holder");
+                var grid = new Grid(_nodeObj, null, gridSize, _nodeRadius, show);
+
+                valueIterationTime += await MeasureExecutionTimeAsync(() => ValueIteration(grid, show, delay));
+                grid.ResetGrid();
+
+                policyIterationTime += await MeasureExecutionTimeAsync(() => PolicyIteration(grid, show, delay));
+            }
+
+            var valueIterationAvgTime = valueIterationTime / iterations;
+            var policyIterationAvgTime = policyIterationTime / iterations;
+
+            print($"Value iteration avg time: {valueIterationAvgTime:F3} seconds.");
+            print($"Policy iteration avg time: {policyIterationAvgTime:F3} seconds.");
+            print($"Repetitions Count: {iterations}.");
+            print($"Grid size is {_gridSizeX} x {_gridSizeY}");
+        }
+
+        private async Task<double> MeasureExecutionTimeAsync(Func<IEnumerator> coroutine)
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+
+            var completionSource = new TaskCompletionSource<bool>();
+            StartCoroutine(ExecuteCoroutine(coroutine, completionSource));
+            await completionSource.Task;
+
+            sw.Stop();
+            return sw.Elapsed.TotalSeconds;
+        }
+
+        private IEnumerator ExecuteCoroutine(Func<IEnumerator> coroutine, TaskCompletionSource<bool> completionSource)
+        {
+            yield return StartCoroutine(coroutine());
+            completionSource.SetResult(true);
+        }
+
+        #endregion
         #endregion
     }
 }
