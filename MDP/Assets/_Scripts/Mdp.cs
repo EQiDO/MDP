@@ -40,8 +40,6 @@ namespace Assets._Scripts
             TestRandomIterations(10, false, 0);
             //TestRandomIterations(1, true, _delay);
 
-            //TestRandomIterations(5, false, 0);
-
             //StartPolicyIteration();
             //StartValueIteration();
         }
@@ -187,10 +185,11 @@ namespace Assets._Scripts
             var currentNode = startNode;
             var totalReward = 0f;
             var iteration = 0;
+            const int maxIterations = 1000;
             while (true)
             {
                 iteration++;
-                if (currentNode.CheckState(NodeStates.Diamond) || currentNode.CheckState(NodeStates.Fire))
+                if (currentNode.CheckState(NodeStates.Diamond) || currentNode.CheckState(NodeStates.Fire) || iteration>= maxIterations)
                    break;
 
                 var policy = currentNode.NodeDirection;
@@ -235,7 +234,6 @@ namespace Assets._Scripts
             {
 
                 var gridSize = new Vector2(_gridSizeX, _gridSizeY);
-                //var nodeHolder = new GameObject("Node Holder");
                 var grid = new Grid(_nodeObj, null, gridSize, _nodeRadius, show);
 
                 valueIterationTime += await MeasureExecutionTimeAsync(() => ValueIteration(grid, show, delay));

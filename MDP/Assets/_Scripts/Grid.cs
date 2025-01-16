@@ -88,7 +88,9 @@ namespace Assets._Scripts
             AssignState(assignedPositions, NodeStates.Diamond, Color.green * 0.5f, 1);
             AssignState(assignedPositions, NodeStates.Fire, Color.red, -1);
 
-            var wallCount = (_gridSizeX * _gridSizeY) * 0.25f;
+            var wallPercent = Random.Range(0.25f, 0.6f);
+
+            var wallCount = (_gridSizeX * _gridSizeY) * wallPercent;
             for (var i = 0; i < wallCount; i++)
             {
                 AssignState(assignedPositions, NodeStates.Wall, Color.gray, float.NaN);
