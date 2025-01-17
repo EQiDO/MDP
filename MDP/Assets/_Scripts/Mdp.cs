@@ -93,13 +93,17 @@ namespace Assets._Scripts
 
             while (true)
             {
+
+                // Policy Evaluation
                 var hasChange = true;
                 while (hasChange)
                 {
                     hasChange = false;
 
-                    foreach (var node in grid.GetAllNodes)
+                    foreach (var node in grid.GetAllNodes) // until no changes for every nodes with this policy
                     {
+                        grid.UpdateGrid();
+
                         var oldValue = node.NodeValue;
                         var newValue = grid.UpdatePolicy(node, node.NodeDirection, _discount, _reward, _noise);
 
@@ -115,7 +119,7 @@ namespace Assets._Scripts
 
 
                 var policyStable = true;
-
+                // Policy Improvement
                 foreach (var node in grid.GetAllNodes)
                 {
                     var oldPolicy = node.NodeDirection;
@@ -134,6 +138,7 @@ namespace Assets._Scripts
                 {
                     //Debug.Log($"Policy Iteration converged after {k} iterations.");
                     grid.UpdateGrid();
+                    //TestRandomRobot(100, grid);
                     yield break;
                 }
 

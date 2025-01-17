@@ -83,6 +83,9 @@ namespace Assets._Scripts
         
         private void AssignRandomStates()
         {
+            //_grid[3, 2].SetNodeData(NodeStates.Diamond, Color.green * 0.5f, 1);
+            //_grid[3, 1].SetNodeData(NodeStates.Fire, Color.red, -1);
+            //_grid[1, 1].SetNodeData(NodeStates.Wall, Color.gray, float.NaN);
             var assignedPositions = new HashSet<Vector2Int>();
 
             AssignState(assignedPositions, NodeStates.Diamond, Color.green * 0.5f, 1);
