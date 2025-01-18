@@ -75,7 +75,6 @@ namespace Assets._Scripts
             if (NodeGameObject == null) return;
             NodeGameObjectText?.SetText(float.IsNaN(value) ? null : value.ToString("F2"));
         }
-
         #endregion
     }
 }

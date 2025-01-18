@@ -61,6 +61,7 @@ namespace Assets._Scripts
 
                 foreach (var (node, (value, direction)) in updatedValues)
                 {
+
                     if (Math.Abs(node.NodeValue - value) >= MaxError)
                     {
                         hasChange = true;
@@ -96,14 +97,15 @@ namespace Assets._Scripts
 
                 // Policy Evaluation
                 var hasChange = true;
+                var maxIteration = 0;
                 while (hasChange)
                 {
                     hasChange = false;
 
+                    if(maxIteration >= 10) break;
+                    maxIteration++;
                     foreach (var node in grid.GetAllNodes) // until no changes for every nodes with this policy
                     {
-                        grid.UpdateGrid();
-
                         var oldValue = node.NodeValue;
                         var newValue = grid.UpdatePolicy(node, node.NodeDirection, _discount, _reward, _noise);
 
@@ -117,18 +119,18 @@ namespace Assets._Scripts
                     }
                 }
 
-
                 var policyStable = true;
                 // Policy Improvement
                 foreach (var node in grid.GetAllNodes)
                 {
                     var oldPolicy = node.NodeDirection;
+                    var oldValue = node.NodeValue;
 
-                    var (_, bestDirection) = grid.UpdateValue(node, _discount, _reward, _noise);
+                    var (bestValue, bestDirection) = grid.UpdateValue(node, _discount, _reward, _noise);
 
                     node.SetDirection(bestDirection);
 
-                    if (oldPolicy != bestDirection)
+                    if (oldPolicy != bestDirection && Math.Abs(oldValue - bestValue) > 0.01f) // also check that values should not be equal 
                     {
                         policyStable = false;
                     }
@@ -239,7 +241,10 @@ namespace Assets._Scripts
             {
 
                 var gridSize = new Vector2(_gridSizeX, _gridSizeY);
-                var grid = new Grid(_nodeObj, null, gridSize, _nodeRadius, show);
+
+                var holder = show ? new GameObject("Node Holder") : null;
+
+                var grid = new Grid(_nodeObj, holder, gridSize, _nodeRadius, show);
 
                 valueIterationTime += await MeasureExecutionTimeAsync(() => ValueIteration(grid, show, delay));
                 grid.ResetGrid();

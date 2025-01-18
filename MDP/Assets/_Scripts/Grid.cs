@@ -171,7 +171,6 @@ namespace Assets._Scripts
                 }
             }
         }
-        
         public (float, Vector2Int) UpdateValue(Node node, float discount, float reward, float noise)
         {
             var nodeValues = new List<(float value, Vector2Int direction)>();
