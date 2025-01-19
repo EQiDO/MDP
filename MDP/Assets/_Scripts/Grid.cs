@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using UnityEngine;
 using TMPro;
 using Random = UnityEngine.Random;
@@ -86,6 +84,8 @@ namespace Assets._Scripts
             //_grid[3, 2].SetNodeData(NodeStates.Diamond, Color.green * 0.5f, 1);
             //_grid[3, 1].SetNodeData(NodeStates.Fire, Color.red, -1);
             //_grid[1, 1].SetNodeData(NodeStates.Wall, Color.gray, float.NaN);
+            //_grid[1, 1].NodeDirectionTransform.gameObject.SetActive(false);
+
             var assignedPositions = new HashSet<Vector2Int>();
 
             AssignState(assignedPositions, NodeStates.Diamond, Color.green * 0.5f, 1);

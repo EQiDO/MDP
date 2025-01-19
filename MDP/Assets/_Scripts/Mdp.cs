@@ -61,6 +61,7 @@ namespace Assets._Scripts
 
                 foreach (var (node, (value, direction)) in updatedValues)
                 {
+                    grid.UpdateGrid();
 
                     if (Math.Abs(node.NodeValue - value) >= MaxError)
                     {
@@ -106,6 +107,8 @@ namespace Assets._Scripts
                     maxIteration++;
                     foreach (var node in grid.GetAllNodes) // until no changes for every nodes with this policy
                     {
+                        grid.UpdateGrid();
+
                         var oldValue = node.NodeValue;
                         var newValue = grid.UpdatePolicy(node, node.NodeDirection, _discount, _reward, _noise);
 
@@ -155,6 +158,7 @@ namespace Assets._Scripts
         #region Robot
         private void TestRandomRobot(int numberOfSimulations, Grid valueGrid)
         {
+            Debug.Log("Robot Results:");
             foreach (var node in valueGrid.GetAllNodes)
             {
                 if (node.CheckState(NodeStates.Wall) || node.CheckState(NodeStates.Diamond) || node.CheckState(NodeStates.Fire))
@@ -239,7 +243,6 @@ namespace Assets._Scripts
 
             for (var i = 0; i < iterations; i++)
             {
-
                 var gridSize = new Vector2(_gridSizeX, _gridSizeY);
 
                 var holder = show ? new GameObject("Node Holder") : null;

@@ -309,7 +309,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 7
+  orthographic size: 3
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -387,10 +387,10 @@ MonoBehaviour:
   _discount: 0.9
   _reward: 0
   _noise: 0.2
-  _delay: 1
+  _delay: 0
   _nodeObj: {fileID: 3619874981778711090, guid: 047d9cc07ec112e47a8de1688d7caea6, type: 3}
-  _gridSizeX: 50
-  _gridSizeY: 50
+  _gridSizeX: 100
+  _gridSizeY: 100
   _nodeRadius: 0.5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
